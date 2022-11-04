@@ -1,0 +1,14 @@
+extends layout
+
+block content
+  h1= title
+  -
+  - var result = [{"tire_name":"good_year","tire_size":250,"tire_type":"all-season"},{"tire_name":"michelin","tire_size":200,"tire_type":"soft rubber"},{"tire_name":"bridgestone","tire_size":260,"tire_type":"bike-tyre"}]
+  div.container-fluid
+     div.row
+        each item,index in result
+            div.col-sm-2(onclick=`buy(${index})`) Tire Name: #{item["tire_name"]}  <br>  Tire_size: #{item["tire_size"]} <br> Tire_type: #{item["tire_type"]} 
+  script.
+      function buy(index){
+         alert("you purchased item "+index+1)
+      }
