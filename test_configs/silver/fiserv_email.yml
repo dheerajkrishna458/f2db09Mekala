@@ -1,0 +1,34 @@
+pipeline_metadata:
+  name: fiserv_email
+  layer: silver
+  environment: dev
+  run_mode: execute
+
+source:
+  type: "delta_table"
+  properties:
+    table: "deltalake.bronze_test.fiserv_email"
+    format: "delta"
+
+transform:
+  standardize:
+    trim_strings: true
+
+data_quality:
+  - check:
+      function: sql_expression
+      arguments:
+        expression: databricks_run_id rlike "^[A-Za-z]+$"
+        msg: databricks_run_id should not be numeric
+        name: databricks_run_id_invalid_value
+      criticality: warn
+
+destination:
+  mode: "overwrite"
+  format: "delta"
+  table: "deltalake.silver_test.fiserv_email"
+
+security:
+  masking:
+    - column: Email_ID
+      policy: mask_text
