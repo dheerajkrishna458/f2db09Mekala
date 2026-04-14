@@ -26,10 +26,6 @@ class ArgParser:
             action="store_true",
             help="Validate and print execution plan without running the pipeline"
         )
-        parser.add_argument(
-            "--restore-to-timestamp",
-            help="Delta timestamp for restore mode (future)"
-        )
         # Parse known arguments, ignore unknown ones
         args, _ = parser.parse_known_args()
         # Log parsed arguments

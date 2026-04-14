@@ -46,24 +46,9 @@ class GoldAggregator(MedallionBase):
 
         if mode == "merge":
             merge_condition = self.destination_config.get("merge_condition", None)
-            update_dict = self.destination_config.get("update_dict", None)
-            insert_dict = self.destination_config.get("insert_dict", None)
-            update_condition = self.destination_config.get("update_condition", None)
-            update_all = self.destination_config.get("update_all", None)
-            insert_all = self.destination_config.get("insert_all", None)
-            self.delta_manager.merge_df(
-                df,
-                target_table,
-                merge_condition,
-                update_dict=update_dict,
-                insert_dict=insert_dict,
-                update_condition=update_condition,
-                update_all=update_all,
-                insert_all=insert_all,
-                table_properties=self.delta_manager.bronze_tbl_properties
-            )
+            self.delta_manager.merge_df(df, target_table, merge_condition)
         elif mode == "append" or mode == "overwrite":
-            self.delta_manager.write_df(df, target_table, mode, self.delta_manager.gold_tbl_properties)
+            self.delta_manager.write_df(df, target_table,mode, self.delta_manager.gold_tbl_properties)
 
     def run(self) -> None:
         """Customized run for gold layer"""

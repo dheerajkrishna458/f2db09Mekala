@@ -23,7 +23,7 @@ class BaseFileIngester:
             env_manager: Manages environment-specific information.
             config: Dictionary identifying source properties (e.g., source_path, format, options).
         """
-        self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__qualname__}")
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.spark = spark
         self.dbutils = SessionManager.get_dbutils(spark)
@@ -112,9 +112,13 @@ class BaseFileIngester:
         # Find folders for the last n days using date hierarchy
         folders = self.get_last_n_days_paths(base_path, last_n_days)
 
+        # Fallback: if no YYYY/MM/DD folders were found, treat base_path as a direct day/folder path.
         if not folders:
-            self.logger.info(f"No date-hierarchy folders found under '{base_path}'")
-            return []
+            self.logger.info(
+                "No date-hierarchy folders found under '%s'. Falling back to direct file scan on the base path.",
+                base_path,
+            )
+            return self._get_files_with_extension([base_path], ext)
 
         return self._get_files_with_extension(folders, ext)
 
@@ -147,25 +151,6 @@ class BaseFileIngester:
             self.logger.info(f"Could not list files in {base_path}: {e}")
             return []
 
-    def _resolve_and_discover_files(self) -> Optional[List]:
-        """Resolves source path and discovers files to ingest."""
-        # Resolve source path
-        source_path = self.env_manager.construct_source_folder_path(self.config["source_path"])
-        self.logger.info(f"Resolved source path: {source_path}")
-
-        # Discover files to ingest
-        file_infos = self._discover_paths(source_path, self.config)
-        self.discovered_files = file_infos
-
-        for f in file_infos:
-            self.logger.info(f"Discovered: {f.path}")
-
-        if not file_infos:
-            self.logger.warning(f"No files found to read for path: {source_path}")
-            return None
-
-        return file_infos
-
     # -----------------------------
     # Public Method
     # -----------------------------
@@ -173,26 +158,61 @@ class BaseFileIngester:
     def read_df(self) -> Optional[DataFrame]:
         """Reads data using a Spark standard read operation."""
 
-        file_infos = self._resolve_and_discover_files()
+        # Validate required config keys
+        ConfigManager.validate_config(["source_path", "format"], self.config)
+
+        # Resolve source path
+        source_path = self.env_manager.construct_source_folder_path(self.config["source_path"])
+        self.logger.info(f"Resolved source path: {source_path}")
+
+        # Discover files to ingest
+        file_infos = self._discover_paths(source_path, self.config)
+        self.discovered_files = file_infos
+        
+        for f in file_infos:
+            self.logger.info(f"Discovered: {f.path}")
+
         if not file_infos:
+            self.logger.warning(f"No files found to read for path: {source_path}")
             return
 
         file_paths = [f.path for f in file_infos if not f.isDir()]
         file_format = self.config.get("format")
         options = self.config.get("options", {}) or {}
 
+        # # Handle multi-split CSVs
+        # if self._is_multi_split_csv(file_paths, self.config):
+        #     mode = self._get_multi_split_header_mode(self.config)
+        #     self.logger.info(f"Detected multi-split CSV input; applying header_mode: '{mode}'.")
+        #     df = self._read_multi_split_paths_as_df(file_paths)
+        #     df = self._sanitize_column_names(df)
+        #     self.logger.info("DataFrame read operation completed with multi-split handling.")
+        #     return df
+
+        # # Handle EBCDIC/Cobol files
+        # if file_format == "cobol":
+        #     copybook_path = self.env_manager.construct_source_folder_path(options.get("copybook"))
+        #     options["copybook"] = copybook_path
+        #     self.logger.info(f"Resolved EBCDIC copybook path: {copybook_path}")
+        #     cobol_reader = self.spark.read.format("cobol").options(**options)
+        #     return self._read_ebcdic_files_as_df(file_infos, cobol_reader)
+
         # Standard read for other formats
         reader = self.spark.read.format(file_format).options(**options)
         df = reader.load(file_paths)
 
+        # if file_format == "csv":
+        #     df = self._sanitize_column_names(df)
+
         self.logger.info("DataFrame read operation completed.")
         return df
-
 
 class CSVFileIngester(BaseFileIngester):
     """
     Ingester implementation for csv files using standard Spark approach.
     """
+
+
     def _sanitize_column_names(self, df: DataFrame) -> DataFrame:
         """
         Replaces Delta-invalid characters in top-level column names.
@@ -250,27 +270,32 @@ class CSVFileIngester(BaseFileIngester):
         """
         Determines whether mixed-header multi-split handling should be used.
         """
-        multi_split_cfg = cfg.get("multi_split")
+        file_format = (cfg.get("format") or "").lower()
+        discover_cfg = cfg.get("discover", {}) or {}
+        multi_split_cfg = cfg.get("multi_split", discover_cfg.get("multi_split", True))
 
-        # Check if multi_split is enabled in config
         if isinstance(multi_split_cfg, dict):
-            is_enabled = to_bool(multi_split_cfg.get("enabled"))
+            is_enabled = to_bool(multi_split_cfg.get("enabled", True))
         else:
             is_enabled = to_bool(multi_split_cfg)
 
-        # Only proceed if multi_split is enabled
-        if not is_enabled:
+        if not (is_enabled and file_format == "csv"):
             return False
+        
+        # Log that multi-split is enabled
+        src_path = cfg.get("source_path") or cfg.get("path")
+        self.logger.info(
+            "Multi-split mode enabled for source path '%s'. Using multi-split processing.",
+            src_path,
+        )
 
         folder_counts = defaultdict(int)
-        # Count files per folder to detect multi-split scenario
         for path in file_paths:
             if path.endswith("/"):
                 continue
             folder = path.rsplit("/", 1)[0] if "/" in path else path
             folder_counts[folder] += 1
 
-        # Multi-split CSV detected if any folder has more than one file
         return any(count > 1 for count in folder_counts.values())
 
     def _get_paths_with_and_without_header(self, file_paths_list: List[str]) -> tuple[List[str], List[str]]:
@@ -440,12 +465,27 @@ class CSVFileIngester(BaseFileIngester):
         )
 
         return header_df.unionByName(no_header_df)
+    
 
     def read_df(self) -> Optional[DataFrame]:
         """Reads data using a Spark standard read operation."""
 
-        file_infos = self._resolve_and_discover_files()
+        # Validate required config keys
+        ConfigManager.validate_config(["source_path", "format"], self.config)
+
+        # Resolve source path
+        source_path = self.env_manager.construct_source_folder_path(self.config["source_path"])
+        self.logger.info(f"Resolved source path: {source_path}")
+
+        # Discover files to ingest
+        file_infos = self._discover_paths(source_path, self.config)
+        self.discovered_files = file_infos
+        
+        for f in file_infos:
+            self.logger.info(f"Discovered: {f.path}")
+
         if not file_infos:
+            self.logger.warning(f"No files found to read for path: {source_path}")
             return
 
         file_paths = [f.path for f in file_infos if not f.isDir()]
@@ -460,6 +500,14 @@ class CSVFileIngester(BaseFileIngester):
             df = self._sanitize_column_names(df)
             self.logger.info("DataFrame read operation completed with multi-split handling.")
             return df
+
+        # # Handle EBCDIC/Cobol files
+        # if file_format == "cobol":
+        #     copybook_path = self.env_manager.construct_source_folder_path(options.get("copybook"))
+        #     options["copybook"] = copybook_path
+        #     self.logger.info(f"Resolved EBCDIC copybook path: {copybook_path}")
+        #     cobol_reader = self.spark.read.format("cobol").options(**options)
+        #     return self._read_ebcdic_files_as_df(file_infos, cobol_reader)
 
         # Standard read for other formats
         reader = self.spark.read.format(file_format).options(**options)
@@ -505,11 +553,27 @@ class EBCDICFileIngester(BaseFileIngester):
             df_union = df_union.unionByName(df_next)
         return df_union
 
+
+
     def read_df(self) -> Optional[DataFrame]:
         """Reads data using a Spark standard read operation."""
 
-        file_infos = self._resolve_and_discover_files()
+        # Validate required config keys
+        ConfigManager.validate_config(["source_path", "format"], self.config)
+
+        # Resolve source path
+        source_path = self.env_manager.construct_source_folder_path(self.config["source_path"])
+        self.logger.info(f"Resolved source path: {source_path}")
+
+        # Discover files to ingest
+        file_infos = self._discover_paths(source_path, self.config)
+        self.discovered_files = file_infos
+        
+        for f in file_infos:
+            self.logger.info(f"Discovered: {f.path}")
+
         if not file_infos:
+            self.logger.warning(f"No files found to read for path: {source_path}")
             return
 
         file_paths = [f.path for f in file_infos if not f.isDir()]
@@ -522,6 +586,7 @@ class EBCDICFileIngester(BaseFileIngester):
         self.logger.info(f"Resolved EBCDIC copybook path: {copybook_path}")
         cobol_reader = self.spark.read.format("cobol").options(**options)
         return self._read_ebcdic_files_as_df(file_infos, cobol_reader)
+
 
 
 class DeltaTableIngester:
@@ -542,7 +607,9 @@ class DeltaTableIngester:
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def read_df(self):
-        
+        # Validate that the required key(s) are present in config
+        ConfigManager.validate_config(["table"], self.config)
+
         table_fqn = self.env_manager.construct_table_fqn(self.config['table'])
         self.logger.info(f"Reading from Delta Table: {table_fqn}")
 

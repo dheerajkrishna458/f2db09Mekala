@@ -7,8 +7,10 @@
 # MAGIC **How to use**: 
 # MAGIC 1. Clone the repo into your Databricks workspace
 # MAGIC 2. Open this notebook
-# MAGIC 3. Update the `CONFIG_DIR` and `CONFIG_FILE` variables below to point to your YAML
+# MAGIC 3. Update the `CONFIG_DIR`, `CONFIG_FILE`, and `LAYER` variables below to point to your YAML
 # MAGIC 4. Run all cells
+# MAGIC 
+# MAGIC **What this tests**: The real entry points (`run_bronze`, `run_silver`, `run_gold`) with `--dry-run`.
 
 # COMMAND ----------
 
@@ -57,8 +59,9 @@ print(f"Config path: {CONFIG_DIR}/{LAYER}/{CONFIG_FILE}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Cell 3: Simulate CLI arguments
-# MAGIC Since we're in a notebook (not CLI), we fake the `sys.argv` that `argparse` reads from.
+# MAGIC ## Cell 3: Dry-run via entry point
+# MAGIC This simulates `sys.argv` and calls the real entry point — the same
+# MAGIC code path that a Databricks job task would execute.
 
 # COMMAND ----------
 
@@ -76,104 +79,19 @@ sys.argv = [
 
 print(f"✅ Simulated CLI args: {sys.argv[1:]}")
 
+# Run through the real entry point
+from framework.main import run_silver
+run_silver()
+
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Cell 4: Run the dry-run — Step by Step
-# MAGIC This runs each piece individually so you can see what's happening.
+# MAGIC ## Cell 4: Test error handling — bad source type
+# MAGIC Verifies the `IngestionFactory` rejects unknown source types.
 
 # COMMAND ----------
 
-# Step 1: Parse arguments
-from framework.core.arg_parser import ArgParser
-
-args = ArgParser.parse()
-print(f"\n✅ Args parsed. dry_run = {args.dry_run}")
-
-# COMMAND ----------
-
-# Step 2: Load YAML
-from pathlib import Path
-from framework.main import load_yaml
-
-yaml_path = str(Path(args.config_directory_path) / args.layer / args.config_file_name)
-print(f"📄 Loading YAML from: {yaml_path}")
-
-config = load_yaml(yaml_path)
-print(f"✅ YAML loaded. Keys: {list(config.keys())}")
-
-# COMMAND ----------
-
-# Step 3: Validate config
-from framework.core.config import ConfigManager
-
-ConfigManager.validate_config(["pipeline_metadata", "source"], config)
-print("✅ Config validation passed — 'pipeline_metadata' and 'source' keys present.")
-
-# COMMAND ----------
-
-# Step 4: Build RuntimeContext
-from framework.core.runtime import RuntimeContext
-
-pipeline = config.get("pipeline_metadata", {})
-context = RuntimeContext(
-    environment=pipeline.get("environment", "unknown"),
-    pipeline_name=pipeline.get("name", "unknown"),
-    run_mode=pipeline.get("run_mode", "execute"),
-    dry_run=True,
-)
-print(f"✅ RuntimeContext: {context}")
-
-# COMMAND ----------
-
-# Step 5: IngestionFactory validation (spark=None for dry-run)
 from framework.factory.ingestion_factory import IngestionFactory
-
-ingester = IngestionFactory.create(
-    spark=None,       # None = dry-run mode, no Spark operations
-    config=config,
-    env_manager=None,
-)
-print(f"✅ IngestionFactory validated. Ingester = {ingester} (None is expected in dry-run)")
-
-# COMMAND ----------
-
-# Step 6: Build and print execution plan
-from framework.core.plan import build_execution_plan
-from framework.core.plan_printer import print_plan
-
-plan = build_execution_plan(config)
-print_plan(plan)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Cell 5: Run it all at once (single call)
-# MAGIC This is what the actual WHL entry point does.
-
-# COMMAND ----------
-
-# Reset sys.argv for a clean run
-sys.argv = [
-    "test_notebook",
-    "--config_file_name", CONFIG_FILE,
-    "--config_directory_path", CONFIG_DIR,
-    "--email_id", EMAIL_ID,
-    "--layer", LAYER,
-    "--dry-run",
-]
-
-from framework.main import main
-main()
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Cell 6: Test error handling — bad source type
-
-# COMMAND ----------
-
-import yaml
 
 bad_config = {
     "pipeline_metadata": {"name": "bad_test", "layer": "bronze"},
@@ -188,9 +106,12 @@ except ValueError as e:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Cell 7: Test error handling — missing source key
+# MAGIC ## Cell 5: Test error handling — missing source key
+# MAGIC Verifies `ConfigManager.validate_config` catches missing required keys.
 
 # COMMAND ----------
+
+from framework.core.config import ConfigManager
 
 incomplete_config = {
     "pipeline_metadata": {"name": "incomplete_test", "layer": "bronze"},
