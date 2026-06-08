@@ -1,0 +1,103 @@
+Let me explore both repos thoroughly first.  
+
+Read [](file:///c%3A/Users/DKrishnaMekala/EnterpriseDatabricksDeltaLakeAzureDataFactory/data-factory)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/deltalake_dabs/src)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/EnterpriseDatabricksDeltaLakeAzureDataFactory/data-factory/pipeline)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/EnterpriseDatabricksDeltaLakeAzureDataFactory/data-factory/linkedService)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/deltalake_dabs/src/bronze)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/deltalake_dabs/src/silver)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/deltalake_dabs/src/gold)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/deltalake_dabs/src/observability)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/deltalake_dabs/src/data_quality_checks)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/core_utils/src/framework)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/core_utils/src/framework/modules)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/core_utils/src/framework/layers)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/EnterpriseDatabricksDeltaLakeAzureDataFactory/data-factory/dataset)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/core_utils/src/framework/modules/io)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/core_utils/src/framework/modules/transformations)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/deltalake_dabs/src/protect)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/core_utils/src/framework/modules/transformations/data.py#1-1), lines 1 to 60
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/deltalake_dabs/src/bronze/bronze_master.py#1-1), lines 1 to 60
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/deltalake_dabs/src/silver/silver_data_loading.py#1-1), lines 1 to 60
+
+Read [](file:///c%3A/Users/DKrishnaMekala/EnterpriseDatabricksDeltaLakeAzureDataFactory/data-factory/pipeline/PL_Master_Orchestration.json)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/deltalake_dabs/src/gold/GoldToADLS.py#1-1), lines 1 to 60
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/core_utils/src/framework/modules/dq)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/deltalake_dabs/src/bronze/ebcdic_data_loading.py#1-1), lines 1 to 50
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/core_utils/src/framework/modules/security)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/core_utils/src/framework/modules/watermark)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/EnterpriseDatabricksDeltaLakeAzureDataFactory/data-factory/pipeline/PL_Raw_To_Bronze.json)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/core_utils/src/framework/modules/security/tokenizer.py)
+
+Read [](file:///c%3A/Users/DKrishnaMekala/Desktop/EnterpriseDatabricksDeltaLake/core_utils/src/framework/modules/watermark/data_watermark.py#1-1), lines 1 to 50
+
+Now I have a thorough understanding of both repos. Here are 20 resume bullet points:
+
+---
+
+**Azure Databricks & Data Engineering — Resume Points**
+
+1. Designed and implemented a **Medallion Architecture (Bronze/Silver/Gold)** on Azure Databricks Delta Lake to process enterprise-scale financial and cardholder data from 20+ heterogeneous source systems including Fiserv, FIS, Oracle, and Snowflake.
+
+2. Built end-to-end **Azure Data Factory pipelines** orchestrating data ingestion, transformation, and delivery across ADLS, Azure SQL, Oracle (Mobius, Prime), Snowflake, and REST APIs using fully parameterized, reusable pipeline templates.
+
+3. Developed a **config-driven ELT framework** in PySpark that dynamically processes Bronze-to-Silver and Silver-to-Gold data flows based on metadata stored in Delta config tables, significantly reducing time to onboard new data sources.
+
+4. Engineered an **EBCDIC fixed-length file parser** using Cobrix and PySpark to handle mainframe data ingestion, supporting both fixed and segmented EBCDIC formats with parallel file processing via `ThreadPoolExecutor`.
+
+5. Implemented a **watermarking framework** for idempotent data processing across Silver and Gold layers, including concurrent claim management, race condition protection, and configurable time window claiming.
+
+6. Authored **150+ YAML-based data quality rule sets** using Databricks DQX across billing, demographic, plastics, and reference data domains, enforcing data integrity validation at the Silver layer before downstream consumption.
+
+7. Built a **PII data protection layer** with SHA-256 tokenization, column-level masking, and Protegrity-based encryption to secure sensitive cardholder data in compliance with enterprise security standards.
+
+8. Designed **Azure Data Factory linked services** for 20+ source connections backed by Azure Key Vault credential management, eliminating hardcoded secrets and centralizing security configuration across all pipeline environments.
+
+9. Built a **master ADF orchestration pipeline** that dynamically reads ADLS config files, applies parameterized filtering, and conditionally triggers downstream Bronze, Silver, Gold, and Snowflake pipelines based on run-time context.
+
+10. Deployed Databricks notebooks and workflows using **Databricks Asset Bundles (DABS)** with environment-specific configurations for dev, beta, and production, ensuring consistent and repeatable deployments.
+
+11. Built **outbound data delivery pipelines** to push processed Gold-layer data to downstream systems including Fusion, InVue, and Snowflake, with bypass and post-process override capabilities for operational flexibility.
+
+12. Developed a **reusable Python core utility library** packaged as a wheel, with modular components for data transformations, audit logging, exception handling, watermarking, Delta I/O, and security — shared across all pipeline layers.
+
+13. Created **Databricks cluster policies** for job compute, memory-optimized, and big data Photon clusters, standardizing resource allocation and enforcing compute cost governance across dev, beta, and production environments.
+
+14. Developed **observability notebooks** to track long-running clusters (8+ hours) and slow-running SQL queries, feeding Databricks SQL Alerts for proactive incident response and cloud cost management.
+
+15. Configured **20+ Databricks SQL Alerts** covering job run failures, data quality errors, compute consumption spikes, file reprocessing flags, and job duration thresholds, surfaced through operational monitoring dashboards.
+
+16. Built **parameterized ADF ingestion pipeline templates** for drop-to-raw file processing — including single file, folder, Service Bus, ZIP extraction, binary copy, and multi-split file variants — with built-in ad hoc reprocessing support.
+
+17. Integrated **Snowflake as a Gold-layer target** by implementing stored procedure execution through ADF and Delta-to-Snowflake notebook exports with parameterized configurations for client admin and billing data domains.
+
+18. Implemented a **CI/CD pipeline using Azure DevOps** for automated testing, Python wheel packaging, and artifact deployment across Databricks environments, enabling reliable and auditable software delivery.
+
+19. Built **inbound data ingestion pipelines** for enterprise source systems — Fusion, Springboard, Mobius, Prime, and TmgWH — with standardized ADF run ID correlation, error logging, and end-to-end audit trail support.
+
+20. Developed **Gold-to-ADLS export notebooks** that write processed Delta tables back to Azure Data Lake Storage as Parquet files, supporting dynamic path construction, configurable date-range filtering, and full/incremental load modes.
